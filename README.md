@@ -1,42 +1,30 @@
 # JLM Night Rush 🏁
 
-**Jerusalem Rush** – browser racing game on real Jerusalem streets.
+אבטיפוס ראשון למשחק נהיגה לילי בדפדפן על מפת ירושלים.
 
-## Live files in this repo
+## קבצים
+- **[index.html](index.html)** — המשחק הראשוני: מפת ירושלים, בניינים בתלת־ממד, רכב שניתן להזיז עם המקלדת ותצוגת מהירות/מרחק.
+- **[jerusalem_rush_real_map.html](jerusalem_rush_real_map.html)** — אבטיפוס מפת העיר, אם הקובץ קיים במאגר.
 
-### 1. Real Map Prototype – **recommended**
-**[`jerusalem_rush_real_map.html`](jerusalem_rush_real_map.html)**
+## הפעלה
+פתחו את [המשחק דרך GitHub Pages](https://twitodor9-lgtm.github.io/JLM-Night-rush/) לאחר הפעלת Pages, או הורידו את `index.html` ופתחו בדפדפן. נדרש חיבור לאינטרנט לטעינת MapLibre והמפה.
 
-- OpenStreetMap vector tiles via MapLibre GL  
-- Real terrain (AWS Terrarium DEM)  
-- 3D extruded buildings from OSM  
-- Quick jump buttons: Begin Blvd, Jaffa St, Old City, Knesset, Mount Scopus, Malha, Har Hotzvim, Hebron Rd, Highway 1…  
-- Stylized car marker (ready for driving logic)
+## שליטה
+- **W / חץ למעלה** — האצה
+- **S / חץ למטה** — האטה / נסיעה לאחור
+- **A / חץ שמאלה** — פנייה שמאלה
+- **D / חץ ימינה** — פנייה ימינה
 
-Open the file in any modern browser – no install needed.
+## פרסום ב-GitHub Pages
+1. היכנסו ל-**Settings** של המאגר.
+2. פתחו **Pages**.
+3. תחת **Build and deployment**, בחרו **Deploy from a branch**.
+4. בחרו branch בשם **main** ותיקייה **/(root)** ולחצו **Save**.
+5. המתינו לפרסום. הכתובת הצפויה: https://twitodor9-lgtm.github.io/JLM-Night-rush/
 
-### 2. Three.js free-roam prototype
-**[`jerusalem-rush.html`](jerusalem-rush.html)**  
-Currently a lightweight entry that points to the real map.  
-The full playable Three.js version (garage, race, minimap, polylines based on real road layout) is available in the project conversation artifacts and can be re-uploaded on request.
+## מצב הפיתוח
+זהו אבטיפוס מוקדם, לא משחק מרוצים מלא. הנהיגה היא תנועה חופשית פשוטה על גבי המפה; עדיין אין פיזיקת כביש, מסלול תחרות, יריבים, התנגשויות או משימות.
 
-## How to run
-1. Download `jerusalem_rush_real_map.html`
-2. Open it in Chrome / Edge / Firefox
-3. Use the side panel to jump to real Jerusalem locations
-
-## Roadmap
-- [x] Real OSM map of Jerusalem with terrain + 3D buildings
-- [ ] Controllable car on the MapLibre map
-- [ ] Snap-to-road / free physics on OSM road network
-- [ ] Night mode lighting (“Night Rush”)
-- [ ] Career / garage progression
-- [ ] Sound & polish
-
-## Credits
-- Map data © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors  
-- Terrain: AWS Terrain Tiles  
-- Map style: OpenFreeMap / MapLibre  
-
----
-Built as an experiment – free to fork and improve.
+## מקורות
+- מפה וסגנון: [OpenFreeMap](https://openfreemap.org/) ו-[MapLibre GL JS](https://maplibre.org/)
+- נתוני מפה: [OpenStreetMap](https://www.openstreetmap.org/copyright)
