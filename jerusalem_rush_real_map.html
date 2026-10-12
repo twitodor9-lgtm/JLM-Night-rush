@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Jerusalem Rush — Real Map Prototype</title>
+<link href="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.css" rel="stylesheet">
+<style>
+:root{--glass:rgba(12,18,27,.86);--line:rgba(255,255,255,.18);--gold:#ffc857}
+*{box-sizing:border-box}html,body,#map{width:100%;height:100%;margin:0;overflow:hidden;background:#d6d1c5;font-family:Arial,Helvetica,sans-serif}
+#map{position:absolute;inset:0}
+.panel{background:var(--glass);border:1px solid var(--line);color:#fff;backdrop-filter:blur(12px);border-radius:14px;box-shadow:0 10px 32px #0003}
+#brand{position:absolute;z-index:5;top:14px;right:14px;padding:12px 15px;min-width:205px}
+.logo{font-weight:900;font-size:20px;letter-spacing:.4px}.logo span{color:var(--gold)}.sub{font-size:11px;color:#c5cfdd;margin-top:4px}
+#side{position:absolute;z-index:5;top:14px;left:14px;width:220px;padding:12px;max-height:calc(100% - 28px);overflow:auto}
+h3{margin:0 0 9px;font-size:13px;color:var(--gold)}
+#places{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+button{font:inherit;color:white;background:rgba(30,40,53,.9);border:1px solid var(--line);border-radius:9px;padding:9px 8px;cursor:pointer;font-size:12px}
+button:hover,button:focus{border-color:var(--gold);outline:none}
+#mapbuttons{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap}#mapbuttons button{flex:1}
+#instructions{position:absolute;z-index:5;right:14px;bottom:28px;max-width:350px;padding:11px 14px;font-size:12px;line-height:1.65}
+#instructions b{color:var(--gold)}#coords{color:#aeb9c8;font-size:11px;margin-top:4px}
+#loading{position:absolute;z-index:8;inset:0;display:flex;align-items:center;justify-content:center;background:#121a24;color:white;text-align:center;padding:24px;transition:opacity .5s}
+#loading.hide{opacity:0;pointer-events:none}
+.car-marker{width:28px;height:48px;position:relative;filter:drop-shadow(0 4px 4px #0007);transform-origin:center center}
+.car-marker .body{position:absolute;inset:3px 3px 2px;background:linear-gradient(90deg,#991f1c,#f45143 35%,#c82e28);border:1px solid #ffd2c8;border-radius:8px 8px 6px 6px;clip-path:polygon(25% 0,75% 0,100% 22%,100% 86%,80% 100%,20% 100%,0 86%,0 22%)}
+.car-marker .window{position:absolute;top:12px;left:7px;width:14px;height:11px;border-radius:3px;background:#182c3a;border:1px solid #8aabb9}
+.car-marker .rear{position:absolute;bottom:7px;left:6px;width:16px;height:4px;background:#ffb1a4;border-radius:2px}
+@media(max-width:700px){#brand{top:8px;right:8px;min-width:0;padding:9px 11px}.logo{font-size:16px}#side{top:82px;left:8px;width:174px;padding:9px}#places{grid-template-columns:1fr 1fr;gap:4px}button{font-size:11px;padding:8px 5px}#instructions{right:8px;bottom:22px;max-width:calc(100% - 200px);font-size:11px;padding:8px 10px}.sub{font-size:10px}}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div id="brand" class="panel"><div class="logo">JERUSALEM <span>RUSH</span></div><div class="sub">מפת ירושלים מבוססת נתונים אמיתיים · אבטיפוס 0.2</div></div>
+<div id="side" class="panel">
+  <h3>קפיצה לאזור</h3>
+  <div id="places">
+    <button data-place="center">מרכז העיר</button>
+    <button data-place="begin">כביש בגין</button>
+    <button data-place="jaffa">רחוב יפו</button>
+    <button data-place="oldcity">העיר העתיקה</button>
+    <button data-place="knesset">הכנסת / גבעת רם</button>
+    <button data-place="scopus">הר הצופים</button>
+    <button data-place="talpiot">תלפיות</button>
+    <button data-place="malha">מלחה</button>
+    <button data-place="herzl">שדרות הרצל</button>
+    <button data-place="hotzvim">הר חוצבים</button>
+    <button data-place="hebron">דרך חברון</button>
+    <button data-place="highway1">כביש 1 / הכניסה</button>
+  </div>
+  <div id="mapbuttons">
+    <button id="terrain">⛰ תבליט: פעיל</button>
+    <button id="view">מבט: תלת־ממד</button>
+  </div>
+  <div id="coords">טוען שכבות מפה…</div>
+</div>
+<div id="instructions" class="panel"><b>מפת אמת · ירושלים</b><br>הכבישים, צמתים, קווי המבנים ושמות הרחובות מגיעים מנתוני OpenStreetMap. אפשר לגרור את המפה, להטות אותה ולגלול להתקרבות. <br><span style="color:#aeb9c8">שלב זה מתמקד במפה מדויקת; הנהיגה והפיזיקה ייבנו מעל רשת הכבישים בהמשך.</span></div>
+<div id="loading"><div><div style="font-size:24px;font-weight:900;margin-bottom:9px">טוען את ירושלים…</div><div style="color:#b9c5d4;font-size:13px">מפת רחובות, מבנים תלת־ממדיים ותבליט גובה</div></div></div>
+<script src="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.js"></script>
+<script>
+(() => {
+'use strict';
+const loading=document.getElementById('loading'),coords=document.getElementById('coords');
+if(!window.maplibregl){loading.innerHTML='<div>לא ניתן לטעון את MapLibre.<br>בדוק חיבור לאינטרנט ופתח מחדש.</div>';return;}
+const places={
+ center:{label:'מרכז העיר',center:[35.2177,31.7818],zoom:14.4,pitch:58},
+ begin:{label:'כביש בגין',center:[35.2025,31.7848],zoom:14.6,pitch:62},
+ jaffa:{label:'רחוב יפו',center:[35.2158,31.7824],zoom:16.1,pitch:62},
+ oldcity:{label:'העיר העתיקה',center:[35.2342,31.7767],zoom:15.6,pitch:62},
+ knesset:{label:'הכנסת / גבעת רם',center:[35.2025,31.7784],zoom:15.4,pitch:62},
+ scopus:{label:'הר הצופים',center:[35.2435,31.7942],zoom:14.7,pitch:60},
+ talpiot:{label:'תלפיות',center:[35.2243,31.7525],zoom:14.5,pitch:58},
+ malha:{label:'מלחה',center:[35.1872,31.7515],zoom:14.4,pitch:58},
+ herzl:{label:'שדרות הרצל',center:[35.1885,31.7794],zoom:14.5,pitch:60},
+ hotzvim:{label:'הר חוצבים',center:[35.2187,31.8175],zoom:14.5,pitch:60},
+ hebron:{label:'דרך חברון',center:[35.2250,31.7620],zoom:15,pitch:60},
+ highway1:{label:'כביש 1 / הכניסה',center:[35.2295,31.8035],zoom:13.7,pitch:58}
+};
+const map=new maplibregl.Map({
+ container:'map',
+ style:'https://tiles.openfreemap.org/styles/liberty',
+ center:[35.2177,31.7818],zoom:13.4,pitch:60,bearing:-18,
+ antialias:true,attributionControl:{compact:true}
+});
+map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),'bottom-right');
+map.addControl(new maplibregl.ScaleControl({maxWidth:120,unit:'metric'}),'bottom-right');
+let terrainOn=true,threeD=true,carMarker=null,carBearing=0;
+map.on('load',()=>{
+ try{
+   map.addSource('jerusalem-dem',{type:'raster-dem',tiles:['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],tileSize:256,encoding:'terrarium',maxzoom:15,attribution:'Elevation: AWS Terrain Tiles'});
+   map.setTerrain({source:'jerusalem-dem',exaggeration:1.25});
+   map.addLayer({id:'jerusalem-hillshade',type:'hillshade',source:'jerusalem-dem',paint:{'hillshade-exaggeration':0.25,'hillshade-shadow-color':'#574c42','hillshade-highlight-color':'#f4e5cb','hillshade-accent-color':'#847864'}},findFirstSymbolLayer());
+ }catch(e){console.warn('Terrain unavailable',e);terrainOn=false;document.getElementById('terrain').textContent='⛰ תבליט: לא זמין';}
+ try{
+   if(map.getSource('openmaptiles')&&!map.getLayer('jerusalem-real-buildings')){
+     map.addLayer({
+       id:'jerusalem-real-buildings',type:'fill-extrusion',source:'openmaptiles','source-layer':'building',minzoom:14,
+       filter:['all',['!=',['get','hide_3d'],'true']],
+       paint:{
+         'fill-extrusion-color':['interpolate',['linear'],['coalesce',['get','render_height'],['get','height'],8],0,'#cdbda2',18,'#b9a68b',55,'#9d9586'],
+         'fill-extrusion-height':['coalesce',['get','render_height'],['get','height'],8],
+         'fill-extrusion-base':['coalesce',['get','render_min_height'],['get','min_height'],0],
+         'fill-extrusion-opacity':0.92,
+         'fill-extrusion-vertical-gradient':true
+       }
+     },findFirstSymbolLayer());
+   }
+ }catch(e){console.warn('3D building extrusion layer unavailable; using style buildings',e);}
+ const el=document.createElement('div');el.className='car-marker';el.innerHTML='<div class="body"></div><div class="window"></div><div class="rear"></div>';
+ carMarker=new maplibregl.Marker({element:el,rotationAlignment:'map',pitchAlignment:'map',rotation:carBearing}).setLngLat([35.2177,31.7818]).addTo(map);
+ map.easeTo({duration:1200});
+ loading.classList.add('hide');setTimeout(()=>loading.remove(),600);
+ coords.textContent='© OpenStreetMap · גובה: AWS Terrain Tiles';
+ map.on('move',()=>{const c=map.getCenter();coords.textContent=`${c.lat.toFixed(5)}, ${c.lng.toFixed(5)} · זום ${map.getZoom().toFixed(1)}`;});
+});
+function findFirstSymbolLayer(){const layers=map.getStyle().layers||[];const sym=layers.find(l=>l.type==='symbol');return sym?sym.id:undefined;}
+document.querySelectorAll('[data-place]').forEach(btn=>btn.addEventListener('click',()=>{
+ const p=places[btn.dataset.place];if(!p)return;
+ map.flyTo({center:p.center,zoom:p.zoom,pitch:p.pitch,bearing:-18,duration:1500,essential:true});
+ coords.textContent=p.label;
+}));
+document.getElementById('terrain').addEventListener('click',()=>{
+ terrainOn=!terrainOn;
+ try{map.setTerrain(terrainOn?{source:'jerusalem-dem',exaggeration:1.25}:null);}catch(e){}
+ const hill=map.getLayer('jerusalem-hillshade');if(hill)map.setLayoutProperty('jerusalem-hillshade','visibility',terrainOn?'visible':'none');
+ document.getElementById('terrain').textContent=terrainOn?'⛰ תבליט: פעיל':'⛰ תבליט: כבוי';
+});
+document.getElementById('view').addEventListener('click',()=>{
+ threeD=!threeD;
+ map.easeTo({pitch:threeD?60:0,bearing:threeD?-18:0,duration:900});
+ document.getElementById('view').textContent=threeD?'מבט: תלת־ממד':'מבט: מלמעלה';
+});
+map.on('error',e=>{console.warn('Map error',e.error||e);});
+})();
+</script>
+</body>
+</html>
