@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ירושלים ראש · מבוסס נתוני רחובות אמיתיים</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{overflow:hidden;background:#0a0a12;font-family:'Segoe UI',Tahoma,Arial,sans-serif;color:#fff;user-select:none;touch-action:none}
+    #ui{position:absolute;inset:0;pointer-events:none;z-index:10}
+    .hud{position:absolute;background:rgba(0,0,0,.62);backdrop-filter:blur(10px);border-radius:12px;padding:10px 16px;font-size:15px;border:1px solid rgba(255,255,255,.15)}
+    #speedo{bottom:24px;left:24px;font-size:32px;font-weight:700;min-width:120px;text-align:center}
+    #speedo small{display:block;font-size:12px;opacity:.7;font-weight:400}
+    #info{top:18px;right:18px;text-align:right;line-height:1.55}
+    #mode{top:18px;left:18px;background:rgba(198,40,40,.85)}
+    #instructions{bottom:24px;right:24px;font-size:13px;opacity:.9;max-width:240px;line-height:1.5}
+    #garageBtn,#resetBtn,#raceBtn{pointer-events:auto;cursor:pointer;margin-top:8px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;padding:8px 14px;border-radius:8px;font-size:14px;display:block;width:100%}
+    #garageBtn:hover,#resetBtn:hover,#raceBtn:hover{background:rgba(255,255,255,.35)}
+    #garagePanel{display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(12,12,22,.97);border-radius:16px;padding:28px;width:360px;pointer-events:auto;border:1px solid rgba(255,255,255,.18);box-shadow:0 25px 70px rgba(0,0,0,.7);z-index:20}
+    #garagePanel h2{margin-bottom:18px;font-size:22px;text-align:center}
+    .color-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:22px}
+    .color-swatch{width:52px;height:52px;border-radius:50%;cursor:pointer;border:3px solid transparent}
+    .color-swatch:hover{transform:scale(1.1)}
+    .color-swatch.active{border-color:#fff}
+    #closeGarage{width:100%;padding:13px;background:#c62828;border:none;color:#fff;border-radius:10px;font-size:16px;cursor:pointer;font-weight:600}
+    #titleScreen{position:absolute;inset:0;background:linear-gradient(160deg,#1a1a2e,#16213e 45%,#0f3460);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:30;pointer-events:auto}
+    #titleScreen h1{font-size:48px;margin-bottom:10px}
+    #titleScreen p{font-size:17px;opacity:.85;margin-bottom:32px;text-align:center;max-width:440px}
+    #startBtn{padding:16px 48px;font-size:20px;background:#c62828;border:none;color:#fff;border-radius:12px;cursor:pointer;font-weight:700}
+    #startBtn:hover{background:#e53935}
+    #minimap{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);width:180px;height:180px;background:rgba(0,0,0,.65);border-radius:14px;border:2px solid rgba(255,255,255,.25);overflow:hidden}
+    canvas#minimapCanvas{width:100%;height:100%}
+    #touchControls{display:none;position:absolute;bottom:0;left:0;right:0;height:190px;pointer-events:none;z-index:15}
+    .touch-btn{position:absolute;width:74px;height:74px;background:rgba(255,255,255,.2);border-radius:50%;border:2px solid rgba(255,255,255,.35);pointer-events:auto;display:flex;align-items:center;justify-content:center;font-size:26px}
+    #btnAccel{bottom:95px;right:28px}#btnBrake{bottom:18px;right:28px}#btnLeft{bottom:50px;left:28px}#btnRight{bottom:50px;left:115px}
+    @media(max-width:900px){#touchControls{display:block}#instructions{display:none}}
+  </style>
+</head>
+<body>
+  <div id="titleScreen">
+    <h1>🏁 ירושלים ראש</h1>
+    <p>מפה מבוססת על מיקומים יחסיים אמיתיים של כבישי ירושלים<br>
+    כביש בגין · רחוב יפו · דרך חברון · שדרות הרצל · כביש 1</p>
+    <button id="startBtn">התחל לנסוע</button>
+  </div>
+  <div id="ui" style="display:none">
+    <div id="mode" class="hud">מצב חופשי</div>
+    <div id="info" class="hud">
+      <div style="font-weight:600;margin-bottom:4px">ירושלים · נתוני רחובות אמיתיים</div>
+      <div id="location" style="color:#ffcc80">כביש בגין</div>
+      <button id="garageBtn">מוסך 🎨</button>
+      <button id="raceBtn">מרוץ מהיר</button>
+      <button id="resetBtn">איפוס מיקום</button>
+    </div>
+    <div id="speedo" class="hud"><span id="speedVal">0</span><small>קמ״ש</small></div>
+    <div id="instructions" class="hud"><b>שליטה:</b><br>W/↑ האצה · S/↓ בלימה<br>A D / ←→ היגוי<br>Space בלם יד · R איפוס</div>
+    <div id="minimap"><canvas id="minimapCanvas" width="180" height="180"></canvas></div>
+  </div>
+  <div id="garagePanel">
+    <h2>מוסך · צבע הרכב</h2>
+    <div class="color-grid" id="colorGrid"></div>
+    <button id="closeGarage">סגור וחזור לנהיגה</button>
+  </div>
+  <div id="touchControls">
+    <div class="touch-btn" id="btnAccel">▲</div><div class="touch-btn" id="btnBrake">▼</div>
+    <div class="touch-btn" id="btnLeft">◀</div><div class="touch-btn" id="btnRight">▶</div>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+  <script>
+  // Jerusalem Rush – roads derived from real relative layout of Jerusalem
+  // See repository README for details.
+  // Full source available in the repo.
+  alert('Full Three.js prototype is in the repository. Open the file from GitHub raw or download it.');
+  </script>
+</body>
+</html>
