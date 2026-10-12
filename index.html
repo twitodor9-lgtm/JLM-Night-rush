@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>JLM Night Rush</title>
+<link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}html,body,#map{margin:0;width:100%;height:100%;overflow:hidden;font-family:Arial,sans-serif;background:#080e1c;color:#fff}
+#map{position:absolute;inset:0}.hud{position:absolute;z-index:2;top:16px;right:16px;max-width:min(390px,calc(100vw - 32px));padding:18px 20px;background:rgba(7,14,30,.88);border:1px solid #354568;border-radius:18px;box-shadow:0 12px 40px #0007;backdrop-filter:blur(10px)}
+h1{margin:0 0 6px;font-size:clamp(22px,4vw,32px);letter-spacing:.5px}h1 span{color:#5ce1e6}.sub{color:#bac7df;font-size:13px;line-height:1.5}.stats{display:flex;gap:9px;margin-top:13px}.stat{background:#17233b;border-radius:10px;padding:9px 12px;flex:1}.stat small{display:block;color:#9db0d2;font-size:11px}.stat strong{font-size:20px}.help{position:absolute;z-index:2;bottom:18px;left:18px;max-width:310px;padding:13px 16px;background:#07101ddd;border:1px solid #354568;border-radius:14px;color:#d7e5ff;font-size:13px;line-height:1.6}.pill{display:inline-block;background:#193b52;color:#6ef0e5;padding:4px 8px;border-radius:99px;font-size:11px;margin-top:10px}.car{font-size:28px;filter:drop-shadow(0 3px 4px #000)}.btn{margin-top:12px;border:0;border-radius:10px;padding:10px 14px;background:#55e1df;color:#07121d;font-weight:700;cursor:pointer}.notice{position:absolute;z-index:2;top:16px;left:16px;padding:9px 12px;border-radius:10px;background:#07101dcc;font-size:12px;color:#c4d5ef}@media(max-width:560px){.hud{top:10px;right:10px;padding:14px}.help{bottom:10px;left:10px;right:10px;max-width:none}.notice{top:auto;bottom:116px;left:10px}}
+</style>
+</head>
+<body><div id="map"></div>
+<section class="hud"><h1>JLM <span>NIGHT RUSH</span></h1><div class="sub">מרוץ לילה ברחובות ירושלים · אבטיפוס ראשון</div><div class="stats"><div class="stat"><small>מהירות</small><strong id="speed">0</strong> <small>קמ״ש</small></div><div class="stat"><small>מרחק</small><strong id="distance">0.00</strong> <small>ק״מ</small></div><div class="stat"><small>מצב</small><strong id="mode">READY</strong></div></div><div class="pill">מפת עיר חיה · בניינים בתלת־ממד</div><br><button class="btn" id="start">התחל נסיעה</button></section>
+<div class="notice">WASD / חצים לנהיגה · אפשר גם ללחוץ על המפה</div>
+<div class="help"><b>איך משחקים?</b><br>לחצו על ״התחל נסיעה״ ואז השתמשו בחצים או W A S D. המצלמה עוקבת אחרי הרכב, ואפשר לסייר באזור ירושלים.<br><span style="color:#8ea6ca">זהו אבטיפוס דפדפן; פיזיקת מרוץ ומשימות יתווספו בהמשך.</span></div>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script>
+const startCenter=[35.2137,31.7683];let map,marker,started=false,speed=0,dist=0,heading=0,raf=0,last=0,keys={};
+const car=document.createElement('div');car.className='car';car.textContent='🏎️';car.style.transform='rotate(0deg)';
+map=new maplibregl.Map({container:'map',style:'https://tiles.openfreemap.org/styles/liberty',center:startCenter,zoom:15.3,pitch:58,bearing:-18,antialias:true});
+map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),'bottom-right');
+marker=new maplibregl.Marker({element:car,rotationAlignment:'map',pitchAlignment:'map'}).setLngLat(startCenter).addTo(map);
+map.on('load',()=>{const layers=map.getStyle().layers;let labelLayer;for(const l of layers){if(l.type==='symbol'&&l.layout&&l.layout['text-field']){labelLayer=l.id;break;}}map.addLayer({id:'3d-buildings',source:'openmaptiles', 'source-layer':'building',type:'fill-extrusion',minzoom:13,paint:{'fill-extrusion-color':['interpolate',['linear'],['get','render_height'],0,'#34445a',30,'#66788d',100,'#a4b3c5'],'fill-extrusion-height':['coalesce',['get','render_height'],0],'fill-extrusion-base':['coalesce',['get','render_min_height'],0],'fill-extrusion-opacity':0.82}},labelLayer);});
+function updateHUD(){document.getElementById('speed').textContent=Math.round(Math.abs(speed)*120);document.getElementById('distance').textContent=dist.toFixed(2);document.getElementById('mode').textContent=started?'DRIVE':'READY'}
+document.getElementById('start').onclick=()=>{started=true;document.getElementById('start').textContent='בנסיעה…';document.getElementById('mode').textContent='DRIVE';map.easeTo({zoom:16,pitch:62,duration:900});};
+addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k))e.preventDefault();keys[k]=true;if(!started&&['w','arrowup'].includes(k))document.getElementById('start').click();});
+addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+function tick(t){const dt=Math.min((t-last)/1000||0,0.05);last=t;if(started){const forward=keys.w||keys.arrowup,back=keys.s||keys.arrowdown,left=keys.a||keys.arrowleft,right=keys.d||keys.arrowright;if(forward)speed=Math.min(1.15,speed+dt*.45);else if(back)speed=Math.max(-.35,speed-dt*.65);else speed*=Math.pow(.93,dt*60);if(Math.abs(speed)>.025){if(left)heading-=dt*1.25*(speed<0?-1:1);if(right)heading+=dt*1.25*(speed<0?-1:1);const p=marker.getLngLat(),meters=speed*dt*38,lat=p.lat+Math.cos(heading)*meters/111320,lng=p.lng+Math.sin(heading)*meters/(111320*Math.cos(p.lat*Math.PI/180));marker.setLngLat([lng,lat]);car.style.transform='rotate('+((heading*180/Math.PI)+90)+'deg)';map.easeTo({center:[lng,lat],bearing:-(heading*180/Math.PI),duration:120,essential:true});dist+=Math.abs(meters)/1000;}updateHUD();}raf=requestAnimationFrame(tick)}requestAnimationFrame(tick);
+</script></body></html>
