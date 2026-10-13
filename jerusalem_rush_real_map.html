@@ -54,10 +54,10 @@ button:hover,button:focus{border-color:var(--gold);outline:none}
     <button data-place="highway1">כביש 1 / הכניסה</button>
   </div>
   <div id="mapbuttons">
-    <button id="night" aria-pressed="true">🌙 מצב לילה</button><button id="landmarks" aria-pressed="true">📍 אזורים</button><button id="terrain">⛰ תבליט: נטען</button>
+    <button id="route2013">🏁 פורמולה 2013</button><button id="route2014">🏁 פורמולה 2014</button><button id="clearRoute">הסר מסלול</button><button id="night" aria-pressed="true">🌙 מצב לילה</button><button id="landmarks" aria-pressed="true">📍 אזורים</button><button id="terrain">⛰ תבליט: נטען</button>
     <button id="view">מבט: תלת־ממד</button>
   </div>
-  <div class="legend">כבישים ומבנים: OpenStreetMap · תבליט: AWS<br>סימוני האזורים הם נקודות ניווט מקורבות, לא מיקום מבנה מדויק.</div><div id="coords">טוען שכבות מפה…</div>
+  <div id="routeInfo" class="legend" role="status">בחר מסלול פורמולה היסטורי. הקו הוא המחשה מקורבת ולא תוואי GPS מאומת.</div><div class="legend">כבישים ומבנים: OpenStreetMap · תבליט: AWS<br>סימוני האזורים הם נקודות ניווט מקורבות, לא מיקום מבנה מדויק.</div><div id="coords">טוען שכבות מפה…</div>
 </div>
 <div id="instructions" class="panel"><b>מפת אמת · ירושלים</b><br>הכבישים, צמתים, קווי המבנים ושמות הרחובות מגיעים מנתוני OpenStreetMap. אפשר לגרור את המפה, להטות אותה ולגלול להתקרבות. <br><span style="color:#aeb9c8">שלב זה מתמקד במפה מדויקת; הנהיגה והפיזיקה ייבנו מעל רשת הכבישים בהמשך.</span></div>
 <div id="loading"><div><div style="font-size:24px;font-weight:900;margin-bottom:9px">טוען את ירושלים…</div><div style="color:#b9c5d4;font-size:13px">מפת רחובות, מבנים תלת־ממדיים ותבליט גובה</div></div></div>
@@ -91,6 +91,40 @@ map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),'bottom-r
 map.addControl(new maplibregl.ScaleControl({maxWidth:120,unit:'metric'}),'bottom-right');
 let terrainOn=false,terrainAvailable=false,threeD=true,nightOn=true,landmarksOn=true,carMarker=null,carBearing=0;
 const dayPaint=new Map(),landmarkMarkers=[];
+// Schematic waypoints derived from contemporary street descriptions, not surveyed road centerlines.
+const formulaRoutes={
+  '2013':{name:'פורמולה ירושלים 2013',description:'מתחם התחנה → דרך חברון → חטיבת ירושלים → יצחק קריב → המלך דוד → דוד רמז',points:[
+    [35.2242,31.7660],[35.2253,31.7680],[35.2272,31.7704],
+    [35.2311,31.7735],[35.2291,31.7777],[35.2259,31.7787],
+    [35.2224,31.7759],[35.2216,31.7731],[35.2229,31.7688],[35.2242,31.7660]
+  ]},
+  '2014':{name:'פורמולה ירושלים 2014',description:'מתחם התחנה → דוד רמז → גן הפעמון → המלך דוד → יצחק קריב → קרתא → חזרה לתחנה (דרך החזרה לא אומתה)',points:[
+    [35.2242,31.7660],[35.2230,31.7689],[35.2217,31.7722],
+    [35.2225,31.7761],[35.2259,31.7787],[35.2291,31.7777],
+    [35.2312,31.7744]
+  ]}
+};
+let activeRoute=null;
+function showFormulaRoute(year){
+  const r=formulaRoutes[year];if(!r)return;
+  activeRoute=year;
+  const data={type:'FeatureCollection',features:[{type:'Feature',properties:{name:r.name},geometry:{type:'LineString',coordinates:r.points}}]};
+  if(!map.getSource('formula-route')){
+    map.addSource('formula-route',{type:'geojson',data});
+    map.addLayer({id:'formula-route-line',type:'line',source:'formula-route',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#ffcb55','line-width':5,'line-dasharray':[2,1.4],'line-opacity':0.95}});
+    map.addLayer({id:'formula-route-points',type:'circle',source:'formula-route',paint:{'circle-radius':0}}); // reserved for precise route data later
+  }else map.getSource('formula-route').setData(data);
+  const bounds=r.points.reduce((b,p)=>b.extend(p),new maplibregl.LngLatBounds(r.points[0],r.points[0]));
+  map.fitBounds(bounds,{padding:100,maxZoom:15.4,pitch:45,bearing:-18,duration:1200});
+  document.getElementById('routeInfo').textContent=r.name+' · '+r.description+' · קו מקווקו להמחשה בלבד; ייתכנו סטיות מכבישים ומפניות אמיתיות.';
+  for(const y of ['2013','2014'])document.getElementById('route'+y).setAttribute('aria-pressed',String(y===year));
+}
+function clearFormulaRoute(){
+  activeRoute=null;
+  if(map.getSource('formula-route'))map.getSource('formula-route').setData({type:'FeatureCollection',features:[]});
+  document.getElementById('routeInfo').textContent='בחר מסלול פורמולה היסטורי. הקו הוא המחשה מקורבת ולא תוואי GPS מאומת.';
+  for(const y of ['2013','2014'])document.getElementById('route'+y).setAttribute('aria-pressed','false');
+}
 const landmarkAreas=[
   ['העיר העתיקה','oldcity','🏰'],['מרכז העיר','center','🌆'],
   ['הכנסת / גבעת רם','knesset','🏛'],['הר הצופים','scopus','⛰'],
@@ -179,6 +213,9 @@ document.getElementById('terrain').addEventListener('click',()=>{
  const hill=map.getLayer('jerusalem-hillshade');if(hill)map.setLayoutProperty('jerusalem-hillshade','visibility',terrainOn?'visible':'none');
  document.getElementById('terrain').textContent=terrainOn?'⛰ תבליט: פעיל':'⛰ תבליט: כבוי';
 });
+document.getElementById('route2013').addEventListener('click',()=>showFormulaRoute('2013'));
+document.getElementById('route2014').addEventListener('click',()=>showFormulaRoute('2014'));
+document.getElementById('clearRoute').addEventListener('click',clearFormulaRoute);
 document.getElementById('night').addEventListener('click',()=>{
  nightOn=!nightOn;
  if(nightOn)paintNight();else restoreDay();
