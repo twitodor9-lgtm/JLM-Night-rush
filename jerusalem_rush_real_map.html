@@ -124,7 +124,7 @@ function restoreDay(){
   for(const [id,original] of dayPaint){
     if(!map.getLayer(id))continue;
     for(const property of ['background-color','fill-color','line-color','text-color','text-halo-color','text-halo-width']){
-      if(Object.prototype.hasOwnProperty.call(original,property))try{map.setPaintProperty(id,property,original[property]);}catch(e){}
+      try{map.setPaintProperty(id,property,Object.prototype.hasOwnProperty.call(original,property)?original[property]:null);}catch(e){}
     }
   }
 }
