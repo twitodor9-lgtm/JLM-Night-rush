@@ -112,7 +112,6 @@ function showFormulaRoute(year){
   if(!map.getSource('formula-route')){
     map.addSource('formula-route',{type:'geojson',data});
     map.addLayer({id:'formula-route-line',type:'line',source:'formula-route',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#ffcb55','line-width':5,'line-dasharray':[2,1.4],'line-opacity':0.95}});
-    map.addLayer({id:'formula-route-points',type:'circle',source:'formula-route',paint:{'circle-radius':0}}); // reserved for precise route data later
   }else map.getSource('formula-route').setData(data);
   const bounds=r.points.reduce((b,p)=>b.extend(p),new maplibregl.LngLatBounds(r.points[0],r.points[0]));
   map.fitBounds(bounds,{padding:100,maxZoom:15.4,pitch:45,bearing:-18,duration:1200});
