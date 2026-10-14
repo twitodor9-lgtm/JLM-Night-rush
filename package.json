@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite --host",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview --host"
+    "preview": "vite preview --host",
+    "test:map": "node --test tests/osm-pipeline.test.mjs",
+    "map:build": "node tools/osm-to-roadgraph.mjs"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.19.3",
