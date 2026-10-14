@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="he" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>JLM NIGHT RUSH — 3D Drive Alpha</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden;background:#0a1220;color:#fff;font-family:Arial,sans-serif}canvas{display:block}
+#ui{position:fixed;inset:0;pointer-events:none} .panel{pointer-events:auto;background:#0a1629d9;border:1px solid #7f9bb858;border-radius:13px;padding:11px 15px;backdrop-filter:blur(9px)}
+#top{position:absolute;top:12px;right:12px;max-width:min(440px,calc(100% - 24px))}h1{font-size:23px;margin:0 0 5px;color:#ffd279}#status{font-size:12px;color:#b4c6db;line-height:1.5}
+#stats{position:absolute;left:12px;top:12px;font-size:24px;font-weight:bold;text-align:center}#stats small{display:block;font-size:11px;color:#abbfd2}
+#actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}button,select{background:#18334b;color:white;border:1px solid #68809a;border-radius:8px;padding:9px;cursor:pointer}button:focus-visible,select:focus-visible{outline:2px solid #ffd279}
+#bottom{position:absolute;bottom:15px;right:12px;font-size:12px;max-width:360px;line-height:1.7}
+#touch{position:absolute;bottom:15px;left:15px;right:15px;display:none;justify-content:space-between;pointer-events:none}
+.controls{display:flex;gap:8px;pointer-events:auto} .touch{touch-action:none;width:64px;height:64px;border-radius:20px;font-size:23px;background:#173149c9}
+@media(pointer:coarse){#touch{display:flex}#bottom{display:none}}
+@media(max-width:670px){#top{top:8px;right:8px;max-width:70%;padding:8px}h1{font-size:17px}#stats{left:8px;top:8px;padding:8px;font-size:18px}button,select{font-size:12px;padding:7px}#status{font-size:11px}}
+</style></head><body>
+<div id="ui"><div id="top" class="panel"><h1>JLM NIGHT RUSH <span style="font-size:11px">ALPHA 0.5</span></h1>
+<div id="status" role="status">טוען עולם תלת־ממדי…</div>
+<div id="actions"><button id="reset">איפוס רכב</button><button id="camera">מצלמה: מרדף</button>
+<select id="lighting" aria-label="זמן ביום"><option value="night">לילה</option><option value="sunset">שקיעה</option><option value="day">יום</option></select>
+<button id="quality">גרפיקה: רגילה</button></div></div>
+<div id="stats" class="panel"><span id="speed">0</span><small>קמ״ש</small><span id="distance" style="font-size:13px">0.00 km</span></div>
+<div id="bottom" class="panel">W / ↑ האצה · S / ↓ בלימה ורוורס · A D / ← → פנייה · Space בלם יד · R איפוס.<br>מפת כבישים אמתית נטענת מ־OpenStreetMap; אם השירות אינו זמין מוצגת סביבת הדגמה מסומנת.</div>
+<div id="touch"><div class="controls"><button class="touch" data-key="left" aria-label="שמאלה">◀</button><button class="touch" data-key="right" aria-label="ימינה">▶</button></div><div class="controls"><button class="touch" data-key="brake" aria-label="בלם">▼</button><button class="touch" data-key="gas" aria-label="גז">▲</button></div></div></div>
+<script>
+(async()=>{
+const status=document.getElementById('status'),speedEl=document.getElementById('speed'),distanceEl=document.getElementById('distance');
+window.__JLM_READY__=false;
+status.textContent='טוען מנוע תלת־ממד…';
+let THREE=null,lastImportError=null;
+for(const url of [
+ 'https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js',
+ 'https://unpkg.com/three@0.161.0/build/three.module.js?module'
+]){
+ try{THREE=await import(url);break}catch(error){lastImportError=error;console.warn('Three.js import failed',url,error)}
+}
+if(!THREE){
+ console.error('Three.js unavailable',lastImportError);
+ status.textContent='לא ניתן לטעון את מנוע התלת־ממד. בדוק חיבור לאינטרנט ונסה לרענן.';
+ return;
+}
+status.textContent='מנוע תלת־ממד נטען · בונה עולם…';
+const ORIGIN=[35.224,31.775],R=Math.PI/180,scaleX=111320*Math.cos(ORIGIN[1]*R),scaleZ=111320;
+const xy=(lon,lat)=>new THREE.Vector2((lon-ORIGIN[0])*scaleX,-(lat-ORIGIN[1])*scaleZ);
+const terrain=(x,z)=>10*Math.sin(x/290)*Math.cos(z/340)+5*Math.sin((x+z)/520);
+const scene=new THREE.Scene();scene.fog=new THREE.FogExp2(0x091322,.00055);
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.7));renderer.shadowMap.enabled=false;
+renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.4;
+renderer.domElement.setAttribute('aria-label','תצוגת המשחק התלת־ממדית');
+document.body.prepend(renderer.domElement);
+window.__JLM_READY__=true;
+const camera=new THREE.PerspectiveCamera(64,innerWidth/innerHeight,.3,4500);const hemi=new THREE.HemisphereLight(0x859dc7,0x26332b,1.55);scene.add(hemi);
+const sun=new THREE.DirectionalLight(0xffd0a3,1.4);sun.position.set(-350,700,-200);scene.add(sun);
+const groundMat=new THREE.MeshStandardMaterial({color:0x25352e,roughness:1});
+const terrainGeo=new THREE.PlaneGeometry(3800,3800,85,85);terrainGeo.rotateX(-Math.PI/2);
+const pos=terrainGeo.attributes.position;for(let i=0;i<pos.count;i++){const x=pos.getX(i),z=pos.getZ(i);pos.setY(i,terrain(x,z)-.4)}terrainGeo.computeVertexNormals();
+scene.add(new THREE.Mesh(terrainGeo,groundMat));
+const roads=new THREE.Group(),buildings=new THREE.Group(),props=new THREE.Group();scene.add(roads,buildings,props);
+const asphalt=new THREE.MeshStandardMaterial({color:0x252a32,roughness:.98}),stripe=new THREE.MeshBasicMaterial({color:0xc6a965}),stone=new THREE.MeshStandardMaterial({color:0xc8b898,roughness:1}),roof=new THREE.MeshStandardMaterial({color:0x9a8571,roughness:1});
+const roadSegments=[];let dataMode='דוגמה';
+function road(a,b,width=9){
+ const dx=b.x-a.x,dz=b.y-a.y,length=Math.hypot(dx,dz);if(length<2)return;
+ const shape=new THREE.PlaneGeometry(width,length,1,Math.max(1,Math.ceil(length/23)));shape.rotateX(-Math.PI/2);
+ const m=shape.attributes.position,angle=Math.atan2(-dx,-dz),cx=(a.x+b.x)/2,cz=(a.y+b.y)/2;
+ // In local coordinates, +Z rotates into segment direction.
+ for(let i=0;i<m.count;i++){let lx=m.getX(i),lz=m.getZ(i);const wx=cx+lx*Math.cos(angle)+lz*Math.sin(angle),wz=cz-lx*Math.sin(angle)+lz*Math.cos(angle);m.setY(i,terrain(wx,wz)+.12)}
+ shape.computeVertexNormals();const mesh=new THREE.Mesh(shape,asphalt);
+ mesh.position.set(cx,0,cz);mesh.rotation.y=angle;roads.add(mesh);
+ roadSegments.push({a,b,width});
+}
+function block(lon,lat,w=15,h=14,d=14){
+ const p=xy(lon,lat),base=terrain(p.x,p.y),g=new THREE.BoxGeometry(w,h,d),mesh=new THREE.Mesh(g,stone);
+ mesh.position.set(p.x,base+h/2,p.y);buildings.add(mesh);
+ const cap=new THREE.Mesh(new THREE.BoxGeometry(w+1,1,d+1),roof);cap.position.set(p.x,base+h+.5,p.y);buildings.add(cap);
+}
+function addBuildingPolygon(nodes,height){
+ const pts=nodes.map(n=>xy(n.lon,n.lat));if(pts.length<4)return;
+ let cx=0,cz=0;for(const p of pts){cx+=p.x;cz+=p.y}cx/=pts.length;cz/=pts.length;
+ // Fast LOD: axis-aligned box matching a mapped OSM building footprint.
+ const minX=Math.min(...pts.map(p=>p.x)),maxX=Math.max(...pts.map(p=>p.x)),minZ=Math.min(...pts.map(p=>p.y)),maxZ=Math.max(...pts.map(p=>p.y));
+ const w=maxX-minX,d=maxZ-minZ;if(w<3||d<3||w*d>14000)return;
+ const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,height,d),stone);mesh.position.set((minX+maxX)/2,terrain(cx,cz)+height/2,(minZ+maxZ)/2);buildings.add(mesh);
+}
+function fallback(){
+ // Synthetic streets are explicitly a fallback, NOT an accurate road network.
+ for(let i=-4;i<=4;i++){
+  const a=new THREE.Vector2(-1050,i*220),b=new THREE.Vector2(1050,i*220);
+  road(a,b,12);road(new THREE.Vector2(i*220,-1050),new THREE.Vector2(i*220,1050),11);
+ }
+ for(let i=-5;i<=5;i++)for(let j=-5;j<=5;j++)if((i+j)%4!==0){
+  const x=i*180+45,z=j*180+45,w=50,h=10+((i*i+j*j)*7)%24;
+  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,48),stone);m.position.set(x,terrain(x,z)+h/2,z);buildings.add(m);
+ }
+ dataMode='סביבת הדגמה (לא מפת כבישים אמתית)';
+}
+async function fetchOsm(){
+ // HTTPS and CORS required. Restrict payload to around the Old City / central Jerusalem.
+ const q='[out:json][timeout:22];(way["highway"~"^(primary|secondary|tertiary|residential|living_street|unclassified|service)$"](around:1600,31.775,35.224);way["building"](around:850,31.775,35.224););out geom;';
+ const hosts=['https://overpass.kumi.systems/api/interpreter','https://overpass-api.de/api/interpreter'];
+ for(const host of hosts){
+  try{
+   const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),13500);
+   let response;try{response=await fetch(host,{method:'POST',body:new URLSearchParams({data:q}),signal:controller.signal})}finally{clearTimeout(timeout)}
+   if(!response.ok)throw Error('Overpass '+response.status);
+   const json=await response.json();let highwayCount=0,buildingCount=0;
+   for(const e of json.elements||[]){
+    if(e.type!=='way'||!e.geometry||!e.tags)continue;
+    if(e.tags.highway){
+      const w=/primary/.test(e.tags.highway)?15:/secondary/.test(e.tags.highway)?12:/tertiary/.test(e.tags.highway)?10:7;
+      for(let i=1;i<e.geometry.length;i++)road(xy(e.geometry[i-1].lon,e.geometry[i-1].lat),xy(e.geometry[i].lon,e.geometry[i].lat),w);
+      highwayCount++;
+    }else if(e.tags.building&&buildingCount<1900){
+      const h=Math.max(5,Math.min(65,parseFloat(e.tags.height)||parseFloat(e.tags['building:levels'])*3||11));
+      addBuildingPolygon(e.geometry,h);buildingCount++;
+    }
+   }
+   if(highwayCount<20)throw Error('too few streets');
+   dataMode='OSM · '+highwayCount+' מקטעי כביש · '+buildingCount+' מבנים';return;
+  }catch(error){console.warn('OSM endpoint unavailable',host,error)}
+ }
+ fallback();
+}
+const carGroup=new THREE.Group();scene.add(carGroup);const bodyMat=new THREE.MeshStandardMaterial({color:0xe73f35,metalness:.45,roughness:.3});
+const body=new THREE.Mesh(new THREE.BoxGeometry(2.25,.75,4.45),bodyMat);body.position.y=.75;carGroup.add(body);
+const cabin=new THREE.Mesh(new THREE.BoxGeometry(1.85,.72,2.15),new THREE.MeshStandardMaterial({color:0x203b53,metalness:.2,roughness:.18}));cabin.position.set(0,1.34,-.22);carGroup.add(cabin);
+const tireMat=new THREE.MeshStandardMaterial({color:0x090a0f});for(const x of [-1.12,1.12])for(const z of [-1.5,1.5]){
+ const wheel=new THREE.Mesh(new THREE.CylinderGeometry(.43,.43,.28,12),tireMat);wheel.rotation.z=Math.PI/2;wheel.position.set(x,.4,z);carGroup.add(wheel);
+}
+for(const x of [-.72,.72]){const light=new THREE.Mesh(new THREE.BoxGeometry(.46,.2,.05),new THREE.MeshBasicMaterial({color:0xffefbb}));light.position.set(x,.88,-2.25);carGroup.add(light);
+const rear=new THREE.Mesh(new THREE.BoxGeometry(.45,.16,.05),new THREE.MeshBasicMaterial({color:0xff3128}));rear.position.set(x,.82,2.25);carGroup.add(rear)}
+let x=0,z=0,heading=0,v=0,travel=0,third=true,lowQuality=false;const key={};
+function reset(){x=0;z=0;heading=0;v=0}reset();
+function onKey(e,down){const k=e.key.toLowerCase();if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k))e.preventDefault();key[k]=down;if(down&&k==='r')reset()}
+addEventListener('keydown',e=>onKey(e,true));addEventListener('keyup',e=>onKey(e,false));
+for(const btn of document.querySelectorAll('[data-key]')){
+ const k={left:'arrowleft',right:'arrowright',brake:'arrowdown',gas:'arrowup'}[btn.dataset.key];
+ btn.addEventListener('pointerdown',e=>{e.preventDefault();btn.setPointerCapture(e.pointerId);key[k]=true});
+ for(const evt of ['pointerup','pointercancel','lostpointercapture'])btn.addEventListener(evt,()=>key[k]=false);
+}
+document.getElementById('reset').onclick=reset;document.getElementById('camera').onclick=()=>{third=!third;document.getElementById('camera').textContent=third?'מצלמה: מרדף':'מצלמה: עליונה'};
+document.getElementById('quality').onclick=()=>{lowQuality=!lowQuality;renderer.setPixelRatio(Math.min(devicePixelRatio,lowQuality?1:1.7));document.getElementById('quality').textContent=lowQuality?'גרפיקה: חסכונית':'גרפיקה: רגילה'};
+function setLighting(mode){
+ const modes={night:[0x091322,0x859dc7,.85,.24,1.4],sunset:[0xa66a59,0xffb181,1.3,1.2,1.65],day:[0x9bbbd7,0xe4f1ff,2.2,2.4,1.35]};
+ const [bg,light,amb,direct,exposure]=modes[mode];scene.background=new THREE.Color(bg);scene.fog.color.set(bg);hemi.color.set(light);hemi.intensity=amb;sun.intensity=direct;renderer.toneMappingExposure=exposure;
+}
+document.getElementById('lighting').onchange=e=>setLighting(e.target.value);setLighting('night');
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+let last=performance.now();
+function frame(now){
+ requestAnimationFrame(frame);const dt=Math.min((now-last)/1000,.045);last=now;
+ const gas=key.w||key.arrowup,brake=key.s||key.arrowdown,turn=(key.d||key.arrowright?1:0)-(key.a||key.arrowleft?1:0),hand=key[' '];
+ const acceleration=gas?16:brake?-22:0;v+=acceleration*dt;v-=v*(hand?2.8:.65)*dt;v=THREE.MathUtils.clamp(v,-12,36);
+ heading+=turn*Math.min(1,Math.abs(v)/7)*(hand?1.45:.93)*dt*(v<0?-1:1);
+ const dx=-Math.sin(heading)*v*dt,dz=-Math.cos(heading)*v*dt;x+=dx;z+=dz;travel+=Math.hypot(dx,dz);
+ carGroup.position.set(x,terrain(x,z)+.34,z);carGroup.rotation.y=heading;
+ const back=new THREE.Vector3(Math.sin(heading),0,Math.cos(heading));
+ const target=carGroup.position.clone().add(new THREE.Vector3(0,1.1,0));
+ const desired=target.clone().add(back.multiplyScalar(third?12:30)).add(new THREE.Vector3(0,third?6:43,0));
+ camera.position.lerp(desired,1-Math.exp(-5*dt));camera.lookAt(target);
+ speedEl.textContent=Math.round(Math.abs(v)*3.6);distanceEl.textContent=(travel/1000).toFixed(2)+' km';
+ renderer.render(scene,camera);
+}
+requestAnimationFrame(frame);
+status.textContent='מנוע 3D פעיל · טוען כבישים ומבנים של ירושלים…';
+fetchOsm().then(()=>{
+ status.textContent='מצב: נהיגה חופשית · '+dataMode+' · טופוגרפיה חזותית מקורבת (לא DEM)';
+}).catch(error=>{
+ console.error(error);
+ status.textContent='שגיאה בטעינת נתוני המפה · סביבת הנהיגה הבסיסית עדיין פעילה';
+});
+})().catch(error=>{
+ console.error('JLM Night Rush startup failed',error);
+ const el=document.getElementById('status');
+ if(el)el.textContent='שגיאת אתחול במשחק. פתח את כלי המפתחים לפרטים.';
+});
+</script></body></html>
