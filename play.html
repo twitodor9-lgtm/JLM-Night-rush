@@ -13,7 +13,7 @@
 @media(pointer:coarse){#touch{display:flex}#bottom{display:none}}
 @media(max-width:670px){#top{top:8px;right:8px;max-width:70%;padding:8px}h1{font-size:17px}#stats{left:8px;top:8px;padding:8px;font-size:18px}button,select{font-size:12px;padding:7px}#status{font-size:11px}}
 </style></head><body>
-<div id="ui"><div id="top" class="panel"><h1>JLM NIGHT RUSH <span style="font-size:11px">ALPHA 0.4</span></h1>
+<div id="ui"><div id="top" class="panel"><h1>JLM NIGHT RUSH <span style="font-size:11px">ALPHA 0.5</span></h1>
 <div id="status" role="status">טוען עולם תלת־ממדי…</div>
 <div id="actions"><button id="reset">איפוס רכב</button><button id="camera">מצלמה: מרדף</button>
 <select id="lighting" aria-label="זמן ביום"><option value="night">לילה</option><option value="sunset">שקיעה</option><option value="day">יום</option></select>
@@ -21,9 +21,24 @@
 <div id="stats" class="panel"><span id="speed">0</span><small>קמ״ש</small><span id="distance" style="font-size:13px">0.00 km</span></div>
 <div id="bottom" class="panel">W / ↑ האצה · S / ↓ בלימה ורוורס · A D / ← → פנייה · Space בלם יד · R איפוס.<br>מפת כבישים אמתית נטענת מ־OpenStreetMap; אם השירות אינו זמין מוצגת סביבת הדגמה מסומנת.</div>
 <div id="touch"><div class="controls"><button class="touch" data-key="left" aria-label="שמאלה">◀</button><button class="touch" data-key="right" aria-label="ימינה">▶</button></div><div class="controls"><button class="touch" data-key="brake" aria-label="בלם">▼</button><button class="touch" data-key="gas" aria-label="גז">▲</button></div></div></div>
-<script type="module">
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js';
+<script>
+(async()=>{
 const status=document.getElementById('status'),speedEl=document.getElementById('speed'),distanceEl=document.getElementById('distance');
+window.__JLM_READY__=false;
+status.textContent='טוען מנוע תלת־ממד…';
+let THREE=null,lastImportError=null;
+for(const url of [
+ 'https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js',
+ 'https://unpkg.com/three@0.161.0/build/three.module.js?module'
+]){
+ try{THREE=await import(url);break}catch(error){lastImportError=error;console.warn('Three.js import failed',url,error)}
+}
+if(!THREE){
+ console.error('Three.js unavailable',lastImportError);
+ status.textContent='לא ניתן לטעון את מנוע התלת־ממד. בדוק חיבור לאינטרנט ונסה לרענן.';
+ return;
+}
+status.textContent='מנוע תלת־ממד נטען · בונה עולם…';
 const ORIGIN=[35.224,31.775],R=Math.PI/180,scaleX=111320*Math.cos(ORIGIN[1]*R),scaleZ=111320;
 const xy=(lon,lat)=>new THREE.Vector2((lon-ORIGIN[0])*scaleX,-(lat-ORIGIN[1])*scaleZ);
 const terrain=(x,z)=>10*Math.sin(x/290)*Math.cos(z/340)+5*Math.sin((x+z)/520);
@@ -31,7 +46,9 @@ const scene=new THREE.Scene();scene.fog=new THREE.FogExp2(0x091322,.00055);
 const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
 renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.7));renderer.shadowMap.enabled=false;
 renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.4;
+renderer.domElement.setAttribute('aria-label','תצוגת המשחק התלת־ממדית');
 document.body.prepend(renderer.domElement);
+window.__JLM_READY__=true;
 const camera=new THREE.PerspectiveCamera(64,innerWidth/innerHeight,.3,4500);const hemi=new THREE.HemisphereLight(0x859dc7,0x26332b,1.55);scene.add(hemi);
 const sun=new THREE.DirectionalLight(0xffd0a3,1.4);sun.position.set(-350,700,-200);scene.add(sun);
 const groundMat=new THREE.MeshStandardMaterial({color:0x25352e,roughness:1});
@@ -144,5 +161,16 @@ function frame(now){
  renderer.render(scene,camera);
 }
 requestAnimationFrame(frame);
-status.textContent='טוען כבישים ומבנים של ירושלים…';fetchOsm().then(()=>{status.textContent='מצב: נהיגה חופשית · '+dataMode+' · טופוגרפיה חזותית מקורבת (לא DEM)'}).catch(e=>{console.error(e);status.textContent='שגיאה בטעינת מפה';});
+status.textContent='מנוע 3D פעיל · טוען כבישים ומבנים של ירושלים…';
+fetchOsm().then(()=>{
+ status.textContent='מצב: נהיגה חופשית · '+dataMode+' · טופוגרפיה חזותית מקורבת (לא DEM)';
+}).catch(error=>{
+ console.error(error);
+ status.textContent='שגיאה בטעינת נתוני המפה · סביבת הנהיגה הבסיסית עדיין פעילה';
+});
+})().catch(error=>{
+ console.error('JLM Night Rush startup failed',error);
+ const el=document.getElementById('status');
+ if(el)el.textContent='שגיאת אתחול במשחק. פתח את כלי המפתחים לפרטים.';
+});
 </script></body></html>
