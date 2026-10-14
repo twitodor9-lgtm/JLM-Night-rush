@@ -29,10 +29,10 @@ const car=new THREE.Group();scene.add(car);
 const carBody=new THREE.Mesh(new THREE.BoxGeometry(1.9,.65,4.1),material(0xf0a12e));carBody.castShadow=true;carBody.position.y=.1;car.add(carBody);
 const glass=new THREE.Mesh(new THREE.BoxGeometry(1.65,.55,2),material(0x152b3d));glass.position.set(0,.68,-.25);glass.castShadow=true;car.add(glass);
 for(const x of [-.96,.96])for(const z of [-1.4,1.4]){const wheel=new THREE.Mesh(new THREE.CylinderGeometry(.42,.42,.28,14),material(0x141a1c));wheel.rotation.z=Math.PI/2;wheel.position.set(x,-.15,z);wheel.castShadow=true;car.add(wheel);}
-const rb=world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setTranslation(0,1.3,80).setLinearDamping(.3).setAngularDamping(2).setCcdEnabled(true));
+const rb=world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setTranslation(0,1.3,-80).setLinearDamping(.3).setAngularDamping(2).setCcdEnabled(true));
 world.createCollider(RAPIER.ColliderDesc.cuboid(.94,.32,1.88).setMass(850).setFriction(.8),rb);
 const keys=new Set<string>(), mapping:Record<string,string>={ArrowUp:'KeyW',ArrowDown:'KeyS',ArrowLeft:'KeyA',ArrowRight:'KeyD'};
-function reset(){rb.setTranslation({x:0,y:1.4,z:80},true);rb.setRotation({x:0,y:0,z:0,w:1},true);rb.setLinvel({x:0,y:0,z:0},true);rb.setAngvel({x:0,y:0,z:0},true);}
+function reset(){rb.setTranslation({x:0,y:1.4,z:-80},true);rb.setRotation({x:0,y:0,z:0,w:1},true);rb.setLinvel({x:0,y:0,z:0},true);rb.setAngvel({x:0,y:0,z:0},true);}
 addEventListener('keydown',e=>{const code=mapping[e.code]??e.code;if(['KeyW','KeyA','KeyS','KeyD','KeyR','Space'].includes(code))e.preventDefault();keys.add(code);if(code==='KeyR')reset()});
 addEventListener('keyup',e=>keys.delete(mapping[e.code]??e.code));addEventListener('blur',()=>keys.clear());
 for(const b of document.querySelectorAll<HTMLButtonElement>('.touch button')){const key=b.dataset.key!;b.addEventListener('pointerdown',e=>{e.preventDefault();b.setPointerCapture(e.pointerId);keys.add(key)});for(const ev of ['pointerup','pointercancel','lostpointercapture'])b.addEventListener(ev,()=>keys.delete(key));}
