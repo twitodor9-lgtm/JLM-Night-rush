@@ -39,7 +39,7 @@ for(const b of document.querySelectorAll<HTMLButtonElement>('.touch button')){co
 const forward=new THREE.Vector3(),side=new THREE.Vector3(),velocity=new THREE.Vector3(),orientation=new THREE.Quaternion();
 let steer=0;
 function physicsStep(){const p=rb.translation(),r=rb.rotation();orientation.set(r.x,r.y,r.z,r.w);forward.set(0,0,1).applyQuaternion(orientation);side.set(1,0,0).applyQuaternion(orientation);const v=rb.linvel();velocity.set(v.x,v.y,v.z);
- const throttle=Number(keys.has('KeyW'))-Number(keys.has('KeyS'));const steerTarget=Number(keys.has('KeyA'))-Number(keys.has('KeyD'));steer=THREE.MathUtils.damp(steer,steerTarget,8,1/60);
+ const throttle=Number(keys.has('KeyW'))-Number(keys.has('KeyS'));const steerTarget=Number(keys.has('KeyD'))-Number(keys.has('KeyA'));steer=THREE.MathUtils.damp(steer,steerTarget,8,1/60);
  // Raycast ground probe. Dynamic vehicle suspension/axle forces are next extraction from Costa Vista.
  const ray=new RAPIER.Ray({x:p.x,y:p.y,z:p.z},{x:0,y:-1,z:0});
  const hit=world.castRay(ray,2,true,undefined,undefined,undefined,rb);
