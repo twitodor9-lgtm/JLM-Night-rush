@@ -1,0 +1,22 @@
+{
+  "name": "jlm-night-rush",
+  "version": "0.8.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host",
+    "test:map": "node --test tests/osm-pipeline.test.mjs",
+    "map:build": "node tools/osm-to-roadgraph.mjs"
+  },
+  "dependencies": {
+    "@dimforge/rapier3d-compat": "^0.19.3",
+    "three": "^0.184.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.184.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.0"
+  }
+}
