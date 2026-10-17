@@ -27,7 +27,9 @@ jobs:
           mkdir -p unpack
           unzip -q imports/jlm-night-rush-grok-sprint01.zip -d unpack
           test -f unpack/jlm-night-rush/package.json
+          mkdir -p "$RUNNER_TEMP"/jlm-engine
           cp -R unpack/jlm-night-rush/. "$RUNNER_TEMP"/jlm-engine/
+          cp overrides/src/world/roadNetwork.ts "$RUNNER_TEMP"/jlm-engine/src/world/roadNetwork.ts
       - name: Install dependencies
         working-directory: ${{ runner.temp }}/jlm-engine
         run: npm install --no-audit --no-fund
