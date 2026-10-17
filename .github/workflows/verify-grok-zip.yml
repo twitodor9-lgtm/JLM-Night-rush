@@ -35,6 +35,8 @@ jobs:
         working-directory: ${{ runner.temp }}/jlm-engine
         run: npm run typecheck
       - name: Unit tests
+        id: unit_tests
+        continue-on-error: true
         working-directory: ${{ runner.temp }}/jlm-engine
         run: npm test
       - name: Build web version
@@ -50,3 +52,8 @@ jobs:
           path: ${{ runner.temp }}/jlm-engine/dist/index.html
           if-no-files-found: error
           retention-days: 30
+      - name: Report failing unit tests after artifact upload
+        if: ${{ steps.unit_tests.outcome == 'failure' }}
+        run: |
+          echo "::error::Unit tests failed; artifact is an unverified build, not a validated playable game."
+          exit 1
