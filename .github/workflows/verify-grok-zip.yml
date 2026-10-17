@@ -1,0 +1,52 @@
+name: Test Grok/Claude engine ZIP and export standalone HTML
+
+on:
+  push:
+    branches: [feature/grok-zip-ci]
+    paths:
+      - 'imports/jlm-night-rush-grok-sprint01.zip'
+      - '.github/workflows/verify-grok-zip.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Extract supplied source ZIP
+        shell: bash
+        run: |
+          test -f imports/jlm-night-rush-grok-sprint01.zip || { echo "::error::Upload the source ZIP to imports/ before running."; exit 1; }
+          mkdir -p unpack
+          unzip -q imports/jlm-night-rush-grok-sprint01.zip -d unpack
+          test -f unpack/jlm-night-rush/package.json
+          cp -R unpack/jlm-night-rush/. "$RUNNER_TEMP"/jlm-engine/
+      - name: Install dependencies
+        working-directory: ${{ runner.temp }}/jlm-engine
+        run: npm install --no-audit --no-fund
+      - name: Typecheck
+        working-directory: ${{ runner.temp }}/jlm-engine
+        run: npm run typecheck
+      - name: Unit tests
+        working-directory: ${{ runner.temp }}/jlm-engine
+        run: npm test
+      - name: Build web version
+        working-directory: ${{ runner.temp }}/jlm-engine
+        run: npm run build
+      - name: Build single HTML
+        working-directory: ${{ runner.temp }}/jlm-engine
+        run: npm run build:single
+      - name: Upload playable single HTML
+        uses: actions/upload-artifact@v4
+        with:
+          name: JLM-Night-Rush-Single-HTML
+          path: ${{ runner.temp }}/jlm-engine/dist/index.html
+          if-no-files-found: error
+          retention-days: 30
